@@ -60,6 +60,7 @@ def cli(*args):
     parser.add_argument('function', help='Path to python function to execute.')
     parser.add_argument('path', nargs='?', default='.', help='Filesystem path to watch, defaults to current directory.')
     parser.add_argument('--verbosity', nargs='?', type=int, default=1, help='0, 1 (default) or 2')
+    parser.add_argument('--no-tty', dest='no_tty', action='store_true', help='Disables TTY')
     arg_namespace = parser.parse_args(args)
 
     log_level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}[arg_namespace.verbosity]
@@ -82,14 +83,17 @@ def cli(*args):
         return sys.exit(1)
     path = path.resolve()
 
-    try:
-        tty_path = os.ttyname(sys.stdin.fileno())
-    except OSError:
-        # fileno() always fails with pytest
-        tty_path = '/dev/tty'
-    except AttributeError:
-        # on windows. No idea of a better solution
-        tty_path = None
+    if arg_namespace.no_tty:
+        tty = None
+    else:
+        try:
+            tty_path = os.ttyname(sys.stdin.fileno())
+        except OSError:
+            # fileno() always fails with pytest
+            tty_path = '/dev/tty'
+        except AttributeError:
+            # on windows. No idea of a better solution
+            tty_path = None
     logger.info('watching "%s/" and reloading "%s" on changes...', path, arg_namespace.function)
     set_start_method('spawn')
     run_process(path, run_function, args=(arg_namespace.function, tty_path), callback=callback)
